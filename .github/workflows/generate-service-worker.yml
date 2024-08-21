@@ -1,0 +1,57 @@
+name: Cloudflare
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    # every day at midnight
+    - cron:  '0 0 * * *'
+permissions:
+  contents: write
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          path: service-worker
+
+      - name: Pull Docker image and extract main.js.tmpl
+        run: |
+          docker pull earthfast/service-worker:v0.7.0
+          docker create --name temp_container earthfast/service-worker:v0.7.0
+          mkdir -p $GITHUB_WORKSPACE/service-worker/build
+          docker cp temp_container:/armada-sw/dist/templates/main.js.tmpl $GITHUB_WORKSPACE/service-worker/build/armada-sw.js
+          docker rm temp_container
+
+      - name: Fetch latest content nodes from ETH chain
+        id: fetch_eth_content_node_data
+        run: |
+          content_nodes=$(npx armada-cli reservation list ${{ vars.PROJECT_ID }} --network testnet-sepolia --json | jq 'map(.host) | join (",")')
+          echo "content_nodes=$content_nodes" >> $GITHUB_OUTPUT
+          echo $content_nodes "content_nodes"
+
+      - name: Update build assets
+        run: |
+          cd $GITHUB_WORKSPACE/service-worker
+          sed -i "s/{{.ContentNodes}}/${{ steps.fetch_eth_content_node_data.outputs.content_nodes }}/g" build/armada-sw.js
+          sed -i "s/{{.BootstrapNodes}}//g" build/armada-sw.js
+          sed -i "s/{{.ProjectID}}/${{ vars.PROJECT_ID }}/g" build/armada-sw.js
+
+      - name: Publish built assets to GitHub
+        run: |
+          cd $GITHUB_WORKSPACE/service-worker
+          if [[ -z $(git status -s) ]]
+          then
+            echo "No updates to publish, exiting"
+            exit
+          else
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add -A
+            git commit -m "Update build assets via GitHub Actions"
+            git push origin main
+            exit
+          fi
