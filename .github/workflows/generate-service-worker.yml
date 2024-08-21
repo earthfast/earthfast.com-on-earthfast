@@ -30,7 +30,7 @@ jobs:
       - name: Fetch latest content nodes from ETH chain
         id: fetch_eth_content_node_data
         run: |
-          content_nodes=$(npx armada-cli reservation list ${{ vars.PROJECT_ID }} --network testnet-sepolia --json | jq 'map(.host) | join (",")')
+          content_nodes=$(npx earthfast-cli@0.6.0 reservation list ${{ vars.PROJECT_ID }} --network testnet-sepolia --json | jq 'map(.host) | join (",")')
           echo "content_nodes=$content_nodes" >> $GITHUB_OUTPUT
           echo $content_nodes "content_nodes"
 
@@ -44,15 +44,15 @@ jobs:
       - name: Publish built assets to GitHub
         working-directory: ${{ github.workspace }}/service-worker
         run: |
-          if [[ -z $(git status -s) ]]
-          then
-            echo "No updates to publish, exiting"
-            exit
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
           else
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
-            git add -A
             git commit -m "Update build assets via GitHub Actions"
+            # Pull with rebase
+            git pull --rebase origin main
+            # Push changes
             git push origin main
-            exit
           fi
