@@ -1,12 +1,12 @@
-name: Cloudflare
+name: Generate service-worker
 on:
   push:
     branches:
       - main
   workflow_dispatch:
   schedule:
-    # every day at midnight
-    - cron:  '0 0 * * *'
+    # every hour
+    - cron:  '0 * * * *'
 permissions:
   contents: write
 jobs:
@@ -21,13 +21,13 @@ jobs:
       - name: Extract main.js.tmpl from Docker image
         working-directory: ${{ github.workspace }}/service-worker
         run: |
-          docker pull earthfast/service-worker:v0.7.0
+          docker pull earthfast/service-worker:v0.8.0
           mkdir -p build
-          docker create --name temp_container earthfast/service-worker:v0.7.0 /bin/true
-          docker cp temp_container:/armada-sw/dist/templates/main.js.tmpl build/armada-sw.js
+          docker create --name temp_container earthfast/service-worker:v0.8.0 /bin/true
+          docker cp temp_container:/earthfast-sw/dist/templates/main.js.tmpl build/earthfast-sw.js
           docker rm temp_container
 
-      - name: Fetch latest content nodes from ETH chain
+      - name: Fetch latest content nodes for project
         id: fetch_eth_content_node_data
         run: |
           content_nodes=$(npx earthfast-cli@0.6.0 reservation list ${{ vars.PROJECT_ID }} --network testnet-sepolia --json | jq 'map(.host) | join (",")')
@@ -37,9 +37,9 @@ jobs:
       - name: Update build assets
         working-directory: ${{ github.workspace }}/service-worker
         run: |
-          sed -i "s/{{.ContentNodes}}/${{ steps.fetch_eth_content_node_data.outputs.content_nodes }}/g" build/armada-sw.js
-          sed -i "s/{{.BootstrapNodes}}//g" build/armada-sw.js
-          sed -i "s/{{.ProjectID}}/${{ vars.PROJECT_ID }}/g" build/armada-sw.js
+          sed -i "s/{{.ContentNodes}}/${{ steps.fetch_eth_content_node_data.outputs.content_nodes }}/g" build/earthfast-sw.js
+          sed -i "s/{{.BootstrapNodes}}//g" build/earthfast-sw.js
+          sed -i "s/{{.ProjectID}}/${{ vars.PROJECT_ID }}/g" build/earthfast-sw.js
 
       - name: Publish built assets to GitHub
         working-directory: ${{ github.workspace }}/service-worker
