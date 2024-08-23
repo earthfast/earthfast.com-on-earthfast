@@ -40,18 +40,19 @@ jobs:
           sed -i "s/{{.ContentNodes}}/${{ steps.fetch_eth_content_node_data.outputs.content_nodes }}/g" build/earthfast-sw.js
           sed -i "s/{{.BootstrapNodes}}//g" build/earthfast-sw.js
           sed -i "s/{{.ProjectID}}/${{ vars.PROJECT_ID }}/g" build/earthfast-sw.js
-          cat build/earthfast-sw.js
 
       - name: Publish built assets to GitHub
         working-directory: ${{ github.workspace }}/service-worker
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git diff
+          git status
           git add -A
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
+          echo "changes"
+          fi
             git commit -m "Update build assets via GitHub Actions"
             # Pull with rebase
             git pull --rebase origin main
