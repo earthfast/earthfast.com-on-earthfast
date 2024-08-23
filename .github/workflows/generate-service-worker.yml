@@ -46,13 +46,10 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git status
           git add -A
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-          echo "changes"
-          fi
             git commit -m "Update build assets via GitHub Actions"
             # Pull with rebase
             git pull --rebase origin main
