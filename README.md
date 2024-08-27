@@ -14,7 +14,7 @@ There's 3 pieces at play here (in order of user)
 #### How to run
 
  Set the environment variable `PROJECT_ID
-1. Either clone or fork this repo to use as the base template. You could also copy the `.github/workflows/generate-service-worker.yml` into a new repo and build around taht
+1. Either clone or fork this repo to use as the base template. You could also copy the `.github/workflows/generate-service-worker.yml` into a new repo and build around that.
 2. Set the following in your project settings
 `PROJECT_ID` (Environment Variable) - EarthFast ProjectID
 3. Connect to the static asset hosting service of your choice. While you can use any static asset hosting platform (Github Pages, Vercel, etc to host the assets from this repo), this is running via [Cloudflare Pages using Git](https://developers.cloudflare.com/pages/framework-guides/deploy-anything/#deploy-with-cloudflare-pages)
@@ -27,7 +27,7 @@ There's 3 pieces at play here (in order of user)
 You can customize build/index.html and the assets from the build/earthfast folder to meet your needs.
 
 ##### Adding SEO 
-SEO works by having a CloudFlare Worker ([worker.js](worker.js)), which checks if the request is coming from a search engine crawler/link unfurler/bot. If it is, serve a special HTML version of the site with metadata tags populated, if it's a user, serve the regular site.
+SEO works by having a CloudFlare Worker ([cloudflare-worker.js](cloudflare-worker.js)), which checks if the request is coming from a search engine crawler/link unfurler/bot. If it is, serve a special HTML version of the site with metadata tags populated, if it's a user, serve the regular site.
 
 If it's a crawler
 Request -> CF Worker -> Static HTML site returned by Worker
