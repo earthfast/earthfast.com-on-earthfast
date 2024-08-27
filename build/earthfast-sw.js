@@ -2152,21 +2152,26 @@ ${msgIdle}`, { headers: this.adapter.newHeaders({ 'Content-Type': 'text/plain' }
             }
         }
         async fetchLatestManifestOnce(node) {
-            let resp;
-            try {
-                resp = await this.apiClient.getContent(ArmadaDriver.MANIFEST_FILENAME, node);
+            const filenames = [ArmadaDriver.MANIFEST_FILENAME, ArmadaDriver.FALLBACK_MANIFEST_FILENAME];
+            for (const filename of filenames) {
+                try {
+                    const resp = await this.apiClient.getContent(filename, node);
+                    if (resp.ok) {
+                        return resp.text();
+                    }
+                    if (filename === filenames[filenames.length - 1]) {
+                        throw new Error(`HTTP error: ${resp.status}`);
+                    }
+                }
+                catch (err) {
+                    if (filename === filenames[filenames.length - 1]) {
+                        const msg = `Error fetching manifest: node=${node} error=${err}`;
+                        await this.broadcast(MsgManifestFetchError(msg));
+                        throw new SwManifestFetchFailureError(msg);
+                    }
+                }
             }
-            catch (err) {
-                const msg = `Error fetching manifest: node=${node} error=${err}`;
-                await this.broadcast(MsgManifestFetchError(msg));
-                throw err;
-            }
-            if (!resp.ok) {
-                const msg = `Error fetching manifest: node=${node} status=${resp.status}`;
-                await this.broadcast(MsgManifestFetchError(msg));
-                throw new SwManifestFetchFailureError(msg);
-            }
-            return resp.text();
+            throw new Error('Unexpected error in fetchLatestManifestOnce');
         }
         async probeLatestManifest() {
             const nodes = await this.registry.allNodes(true);
@@ -2217,7 +2222,8 @@ ${msgIdle}`, { headers: this.adapter.newHeaders({ 'Content-Type': 'text/plain' }
             return new ArmadaAppVersion(this.scope, this.adapter, this.db, this.idle, this.debugger, manifest, hash, this.registry, this.apiClient, this.subtleCrypto);
         }
     }
-    ArmadaDriver.MANIFEST_FILENAME = 'armada.json';
+    ArmadaDriver.MANIFEST_FILENAME = 'earthfast.json';
+    ArmadaDriver.FALLBACK_MANIFEST_FILENAME = 'armada.json';
 
     class StaticNodeRegistry {
         constructor(contentNodes) {
