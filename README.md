@@ -34,3 +34,6 @@ Request -> CF Worker -> Static HTML site returned by Worker
 
 If it's a user
 Request -> CF Worker -> Redirect to CloudFlare pages hosting service worker
+
+##### Custom Headers
+The _headers file specifies custom headers to send when the page is loaded. See [here](https://developers.cloudflare.com/pages/configuration/headers) for full docs.
