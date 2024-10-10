@@ -2370,7 +2370,7 @@ ${msgIdle}`, { headers: this.adapter.newHeaders({ 'Content-Type': 'text/plain' }
     }
 
     const scope = self;
-    const envContentNodes = "content18.usw2.testnet-sepolia.armadanodes.com";
+    const envContentNodes = "";
     const contentNodes = (envContentNodes.trim() !== '') ? envContentNodes.trim().split(',') : [];
     const envBootstrapNodes = "";
     const bootstrapNodes = (envBootstrapNodes.trim() !== '') ? envBootstrapNodes.trim().split(',') : [];
