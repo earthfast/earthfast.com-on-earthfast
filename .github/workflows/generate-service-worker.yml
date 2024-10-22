@@ -18,13 +18,18 @@ jobs:
         with:
           path: service-worker
 
-      - name: Extract main.js.tmpl from Docker image
+      - name: Extract files from Docker image
         working-directory: ${{ github.workspace }}/service-worker
         run: |
           docker pull earthfast/service-worker:v0.11.0
           mkdir -p build
           docker create --name temp_container earthfast/service-worker:v0.11.0 /bin/true
+          # Extract main.js.tmpl and rename it to earthfast-sw.js
           docker cp temp_container:/earthfast-sw/dist/templates/main.js.tmpl build/earthfast-sw.js
+          # Extract the earthfast folder
+          docker cp temp_container:/earthfast-sw/dist/earthfast build/
+          # Extract index.html
+          docker cp temp_container:/earthfast-sw/dist/index.html build/
           docker rm temp_container
 
       - name: Fetch latest content nodes for project
