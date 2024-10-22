@@ -21,9 +21,9 @@ jobs:
       - name: Extract main.js.tmpl from Docker image
         working-directory: ${{ github.workspace }}/service-worker
         run: |
-          docker pull earthfast/service-worker:v0.10.0
+          docker pull earthfast/service-worker:v0.11.0
           mkdir -p build
-          docker create --name temp_container earthfast/service-worker:v0.10.0 /bin/true
+          docker create --name temp_container earthfast/service-worker:v0.11.0 /bin/true
           docker cp temp_container:/earthfast-sw/dist/templates/main.js.tmpl build/earthfast-sw.js
           docker rm temp_container
 
