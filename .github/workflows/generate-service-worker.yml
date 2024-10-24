@@ -30,7 +30,7 @@ jobs:
           docker cp temp_container:/earthfast-sw/dist/public/index.html build/
 
           # Extract earthfast folder from public folder
-          docker cp temp_container:/earthfast-sw/dist/public/earthfast build/earthfast
+          docker cp temp_container:/earthfast-sw/dist/public/earthfast build/
           docker rm temp_container
 
       - name: Fetch latest content nodes for project
