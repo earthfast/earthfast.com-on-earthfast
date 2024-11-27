@@ -36,7 +36,7 @@ jobs:
       - name: Fetch latest content nodes for project
         id: fetch_eth_content_node_data
         run: |
-          content_nodes=$(npx earthfast-cli@0.10.0 reservation list ${{ vars.PROJECT_ID }} --network testnet-sepolia --json | jq 'map(.host) | join (",")')
+          content_nodes=$(npx earthfast-cli@0.10.2 reservation list ${{ vars.PROJECT_ID }} --network testnet-sepolia --json | jq 'map(.host) | join (",")')
           echo "content_nodes=$content_nodes" >> $GITHUB_OUTPUT
           echo $content_nodes "content_nodes"
 
