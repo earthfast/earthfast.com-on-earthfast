@@ -71,11 +71,13 @@
             this.protocol = protocol;
             this.projectId = projectId;
         }
-        async getContent(resource, host, retry) {
+        async getContent(resource, host, retry, cacheBust = false) {
             const url = new URL('/v1/content', `${this.protocol}//${host}`);
             url.searchParams.append('project_id', this.projectId);
             url.searchParams.append('resource', resource);
-            url.searchParams.append(ArmadaAPIClientImpl.cacheBustKey, Math.random().toString());
+            if (cacheBust) {
+                url.searchParams.append(ArmadaAPIClientImpl.cacheBustKey, Math.random().toString());
+            }
             if (retry) {
                 url.searchParams.append('retry', retry);
             }
@@ -2155,7 +2157,7 @@ ${msgIdle}`, { headers: this.adapter.newHeaders({ 'Content-Type': 'text/plain' }
             const filenames = [ArmadaDriver.MANIFEST_FILENAME, ArmadaDriver.FALLBACK_MANIFEST_FILENAME];
             for (const filename of filenames) {
                 try {
-                    const resp = await this.apiClient.getContent(filename, node);
+                    const resp = await this.apiClient.getContent(filename, node, undefined, true);
                     if (resp.ok) {
                         return resp.text();
                     }
