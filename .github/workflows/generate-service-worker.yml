@@ -21,9 +21,9 @@ jobs:
       - name: Extract files from Docker image
         working-directory: ${{ github.workspace }}/service-worker
         run: |
-          docker pull earthfast/service-worker:v0.12.0
+          docker pull earthfast/service-worker:v0.13.0
           mkdir -p build
-          docker create --name temp_container earthfast/service-worker:v0.12.0 /bin/true
+          docker create --name temp_container earthfast/service-worker:v0.13.0 /bin/true
           # Extract main.js.tmpl and rename it to earthfast-sw.js
           docker cp temp_container:/earthfast-sw/dist/templates/main.js.tmpl build/earthfast-sw.js
           # Extract index.html from public folder
