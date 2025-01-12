@@ -71,7 +71,7 @@
             this.protocol = protocol;
             this.projectId = projectId;
         }
-        async getContent(resource, host, retry, cacheBust = false) {
+        async getContent(resource, host, retry, cacheBust) {
             const url = new URL('/v1/content', `${this.protocol}//${host}`);
             url.searchParams.append('project_id', this.projectId);
             url.searchParams.append('resource', resource);
@@ -1854,6 +1854,12 @@ ${msgIdle}`, { headers: this.adapter.newHeaders({ 'Content-Type': 'text/plain' }
             this.isContentNodesFetchFailure = true;
         }
     }
+    class SwNoArmadaNodes extends SwCriticalError {
+        constructor() {
+            super(...arguments);
+            this.isNoArmadaNodes = true;
+        }
+    }
 
     const MsgManifestFetchError = (error) => ({
         action: 'MANIFEST_FETCH_ERROR',
@@ -1891,32 +1897,81 @@ ${msgIdle}`, { headers: this.adapter.newHeaders({ 'Content-Type': 'text/plain' }
         }
         async fetchContent(url) {
             const nodes = await this.registry.allNodes(true);
-            let i = 0;
-            let resp;
-            for (; i < nodes.length && i < ArmadaLazyAssetGroup.MAX_ATTEMPTS; i++) {
-                const retry = (i > 0) ? nodes[i - 1] : undefined;
+            if (nodes.length === 0) {
+                throw new SwNoArmadaNodes(`No nodes available`);
+            }
+            let successfulResponse = null;
+            let completedRequests = 0;
+            const controllers = [];
+            const abortOtherControllers = (exceptIndex) => {
+                controllers.forEach((ctrl, i) => {
+                    if (ctrl && (exceptIndex === undefined || i !== exceptIndex)) {
+                        ctrl.abort();
+                    }
+                });
+            };
+            const startNodeRequest = async (node, index) => {
+                const controller = new AbortController();
+                controllers[index] = controller;
                 try {
-                    resp = await this.apiClient.getContent(url, nodes[i], retry);
+                    const response = await this.apiClient.getContent(url, node, undefined, false);
+                    if (controller.signal.aborted) {
+                        return;
+                    }
+                    if (!response.ok) {
+                        const msg = `Error fetching content: node=${node} resource=${url} status=${response.status}`;
+                        await this.broadcaster.postMessage(MsgContentNodeFetchFailure(msg));
+                        completedRequests++;
+                        return;
+                    }
+                    if (!await this.hashMatches(url, response.clone())) {
+                        const msg = `Content hash mismatch: node=${node} resource=${url}`;
+                        await this.broadcaster.postMessage(MsgContentChecksumMismatch(msg));
+                        completedRequests++;
+                        return;
+                    }
+                    successfulResponse = response;
+                    abortOtherControllers(index);
                 }
                 catch (err) {
-                    const msg = `Error fetching content: node=${nodes[i]} resource=${url} error=${err}`;
-                    await this.broadcaster.postMessage(MsgContentNodeFetchFailure(msg));
-                    continue;
+                    if (err.name !== 'AbortError') {
+                        const msg = `Error fetching content: node=${node} resource=${url} error=${err}`;
+                        await this.broadcaster.postMessage(MsgContentNodeFetchFailure(msg));
+                        completedRequests++;
+                    }
                 }
-                if (!resp.ok) {
-                    const msg = `Error fetching content: node=${nodes[i]} resource=${url} status=${resp.status}`;
-                    await this.broadcaster.postMessage(MsgContentNodeFetchFailure(msg));
-                    continue;
-                }
-                if (!await this.hashMatches(url, resp.clone())) {
-                    const msg = `Content hash mismatch: node=${nodes[i]} resource=${url}`;
-                    await this.broadcaster.postMessage(MsgContentChecksumMismatch(msg));
-                    continue;
-                }
-                return resp;
+            };
+            const resultPromise = new Promise((resolve, reject) => {
+                let timeoutId;
+                const checkStatus = () => {
+                    if (successfulResponse) {
+                        clearTimeout(timeoutId);
+                        abortOtherControllers();
+                        resolve(successfulResponse);
+                    }
+                    else if (completedRequests === nodes.length) {
+                        clearTimeout(timeoutId);
+                        abortOtherControllers();
+                        reject(new SwContentNodesFetchFailureError(`Failed to fetch content: resource=${url} attempts=${nodes.length}`, undefined, 'All nodes failed'));
+                    }
+                };
+                startNodeRequest(nodes[0], 0).then(checkStatus);
+                let currentIndex = 1;
+                const scheduleNext = () => {
+                    if (currentIndex < nodes.length && !successfulResponse) {
+                        startNodeRequest(nodes[currentIndex], currentIndex).then(checkStatus);
+                        currentIndex++;
+                        timeoutId = setTimeout(scheduleNext, ArmadaLazyAssetGroup.TIMEOUT_MS);
+                    }
+                };
+                timeoutId = setTimeout(scheduleNext, ArmadaLazyAssetGroup.TIMEOUT_MS);
+            });
+            try {
+                return await resultPromise;
             }
-            const msg = `Failed to fetch content: resource=${url} attempts=${i}`;
-            throw new SwContentNodesFetchFailureError(msg, resp?.status, resp?.statusText);
+            finally {
+                abortOtherControllers();
+            }
         }
         async hashMatches(url, response) {
             url = this.adapter.normalizeUrl(url);
@@ -1953,7 +2008,7 @@ ${msgIdle}`, { headers: this.adapter.newHeaders({ 'Content-Type': 'text/plain' }
             });
         }
     }
-    ArmadaLazyAssetGroup.MAX_ATTEMPTS = 5;
+    ArmadaLazyAssetGroup.TIMEOUT_MS = 200;
 
     class Broadcaster {
         constructor(scope) {
